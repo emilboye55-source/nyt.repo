@@ -3,7 +3,11 @@ from snap7.util import get_bool, set_bool
 from snap7.type import Area
 import sys
 import time
-
+import Myfunctions
+import csv
+from datetime import datetime
+tid = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+print(f"Program startede kl: {tid}")
 # =================== PLC Konfiguration =================
 PLC_IP = '192.168.0.1'  # Erstat med din PLC's IP-adresse
 RACK = 0
@@ -16,8 +20,10 @@ i00 = False
 i01 = False
 i02 = False
 q00 = False
+i01_prev = False
 
-
+first_scan = True
+counter = 0
 # =================== Opret forbindelse =================
 
 try:
@@ -30,6 +36,10 @@ except Exception as e:
 
 try:
     while True:
+        #==================first scan==========================
+        if first_scan:
+            print("Første scan - initialisering")
+            first_scan = False
         # =========== Læser Input =======================
 
         INPUT_RAW = client.read_area(AREA_IN, 1, 0, 1) # Læs 1 byte fra input (PE)
@@ -47,9 +57,14 @@ try:
             q00 = True
         elif i01:
             q00 = False
+
+        if Myfunctions.one_shot(i01, i01_prev):
+            counter += 1
+            print(f"One-shot aktiveret! Counter: {counter}")
         # =========== Skriv Output =====================
         set_bool(OUTPUT_RAW, 0, 0, q00) # Sæt bit 0 i output til q00
         client.write_area(AREA_OUT, 1, 0, OUTPUT_RAW) # Skriv det muterede bytearray tilbage til output (PA)
+        i01_prev = i01
         time.sleep(0.035) # Vent i 35 ms før næste cyklus
 except KeyboardInterrupt:
     print("Program stoppet af bruger.")
